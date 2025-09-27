@@ -12,9 +12,20 @@ import applicationsRoutes from "./src/routes/applications.routes.js";
 dotenv.config();
 const app = express();
 
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://*.vercel.app',
+  'https://your-specific-app-name.vercel.app'
+];
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-  credentials: true
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.some(allowed => origin.includes(allowed))) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
 }));
 app.use(express.json());
 app.use(cookieParser());
