@@ -12,21 +12,42 @@ import applicationsRoutes from "./src/routes/applications.routes.js";
 dotenv.config();
 const app = express();
 
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://*.vercel.app',
-  'https://your-specific-app-name.vercel.app'
-];
-
-app.use(cors({
+// Fixed CORS configuration
+const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.some(allowed => origin.includes(allowed))) {
+    // Allow requests with no origin (like mobile apps or server-to-server)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'https://crud-application-yyt8.vercel.app', // Your actual frontend URL
+      /\.vercel\.app$/ // Matches any Vercel deployment
+    ];
+    
+    // Check if origin matches any allowed pattern
+    const isAllowed = allowedOrigins.some(pattern => {
+      if (typeof pattern === 'string') {
+        return origin === pattern;
+      }
+      if (pattern instanceof RegExp) {
+        return pattern.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      console.log('CORS blocked for origin:', origin);
+      callback(new Error('Not allowed by CORS'), false);
     }
-  }
-}));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 app.use(morgan("dev"));
@@ -41,7 +62,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/jobs", jobsRoutes);
 app.use("/api/applications", applicationsRoutes);
 
+// Health check route
 app.get("/", (_req, res) => res.send("API is running"));
+app.get("/api/health", (_req, res) => res.json({ status: "OK", message: "API is healthy" }));
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
